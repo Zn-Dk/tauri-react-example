@@ -1,8 +1,18 @@
 name: build-windows
 
-# 仅手动触发（GitHub Actions 页 Run workflow）
+# push 到 main 自动构建（CI）；也可在 Actions 页手动 Run
 on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
+
+# 同一分支连续 push 时取消旧 run，只跑最新（防浪费，替代手动）
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-windows:

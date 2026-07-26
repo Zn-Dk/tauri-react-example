@@ -1,7 +1,12 @@
 name: build-android
 
-# 仅手动触发（GitHub Actions 页 Run workflow），可选 debug/release/all
+# push 到 main 自动构建（CI）；也可在 Actions 页手动 Run（可选 debug/release/all）
 on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
     inputs:
       mode:
@@ -10,8 +15,14 @@ on:
         options: [all, debug, release]
         default: all
 
+# 同一分支连续 push 时取消旧 run，只跑最新（防浪费，替代手动）
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  # GitHub 不允许 job 级 if 引用 matrix，故用前置 job 按 inputs.mode 输出动态 matrix
+  # GitHub 不允许 job 级 if 引用 matrix，故用前置 job 输出动态 matrix
+  # push 触发时 inputs.mode 为空字符串 → 默认 all（debug+release 都构建）
   setup:
     runs-on: ubuntu-latest
     outputs:
@@ -19,10 +30,11 @@ jobs:
     steps:
       - id: set
         run: |
-          if [ "${{ inputs.mode }}" = "all" ]; then
+          MODE="${{ inputs.mode }}"
+          if [ -z "$MODE" ] || [ "$MODE" = "all" ]; then
             echo 'matrix={"mode":["debug","release"]}' >> "$GITHUB_OUTPUT"
           else
-            echo "matrix={\"mode\":[\"${{ inputs.mode }}\"]}" >> "$GITHUB_OUTPUT"
+            echo "matrix={\"mode\":[\"$MODE\"]}" >> "$GITHUB_OUTPUT"
           fi
 
   build-android:
