@@ -1,11 +1,7 @@
 name: build-windows
 
+# 仅手动触发（GitHub Actions 页 Run workflow）
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
   workflow_dispatch:
 
 jobs:

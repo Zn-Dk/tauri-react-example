@@ -1,16 +1,23 @@
 name: build-android
 
+# 仅手动触发（GitHub Actions 页 Run workflow），可选 debug/release/all
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: '构建模式'
+        type: choice
+        options: [all, debug, release]
+        default: all
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        mode: [debug, release]
+    # mode=all 时 debug/release 并行都跑；选单一模式时只跑对应 job
+    if: ${{ inputs.mode == 'all' || inputs.mode == matrix.mode }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -24,35 +31,38 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      # 安装 Rust 工具链并加入 Android 交叉编译目标
+      # 安装 Rust 工具链（仅 arm64 目标）
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android,armv7-linux-androideabi
-      # ubuntu-latest 预装 Android SDK（$ANDROID_HOME 与 sdkmanager），补装 NDK
+          targets: aarch64-linux-android
+      # ubuntu-latest 预装 Android SDK（$ANDROID_HOME），补装 NDK
       - name: Install Android NDK
         run: |
           SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           SDKMGR=$(ls -d "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)
-          echo "Android SDK: $SDK | sdkmanager: $SDKMGR"
           yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
           "$SDKMGR" --install "ndk;27.0.12077973" "cmake;3.22.1"
           echo "NDK_HOME=$SDK/ndk/27.0.12077973" >> "$GITHUB_ENV"
           echo "ANDROID_NDK_HOME=$SDK/ndk/27.0.12077973" >> "$GITHUB_ENV"
-      # 缓存 cargo 编译产物，加速后续 Android 交叉编译
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
       - name: Install frontend deps
         run: pnpm install --frozen-lockfile
-      # 在 CI 生成 gen/android（无需提交仓库）
+      # CI 内生成 gen/android（不提交仓库）
       - name: Init Android project
         run: pnpm tauri android init
-      # 构建 debug APK（debug keystore 自动签名，可直接装机测试）
-      - name: Build Android APK
-        run: pnpm tauri android build --apk --debug
+      # 按 matrix.mode 构建 debug 或 release（仅 arm64）
+      - name: Build Android APK (${{ matrix.mode }})
+        run: |
+          if [ "${{ matrix.mode }}" = "debug" ]; then
+            pnpm tauri android build --apk --debug --target aarch64
+          else
+            pnpm tauri android build --apk --target aarch64
+          fi
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: tauri-android-apk
+          name: tauri-android-apk-${{ matrix.mode }}
           path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
