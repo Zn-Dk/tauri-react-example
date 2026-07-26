@@ -11,13 +11,25 @@ on:
         default: all
 
 jobs:
+  # GitHub 不允许 job 级 if 引用 matrix，故用前置 job 按 inputs.mode 输出动态 matrix
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set.outputs.matrix }}
+    steps:
+      - id: set
+        run: |
+          if [ "${{ inputs.mode }}" = "all" ]; then
+            echo 'matrix={"mode":["debug","release"]}' >> "$GITHUB_OUTPUT"
+          else
+            echo "matrix={\"mode\":[\"${{ inputs.mode }}\"]}" >> "$GITHUB_OUTPUT"
+          fi
+
   build-android:
+    needs: setup
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        mode: [debug, release]
-    # mode=all 时 debug/release 并行都跑；选单一模式时只跑对应 job
-    if: ${{ inputs.mode == 'all' || inputs.mode == matrix.mode }}
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
