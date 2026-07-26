@@ -28,9 +28,13 @@ jobs:
       # ubuntu-latest 预装 Android SDK（$ANDROID_HOME 与 sdkmanager），补装 NDK
       - name: Install Android NDK
         run: |
-          sdkmanager --install "ndk;27.0.12077973" "cmake;3.22.1"
-          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          SDKMGR=$(ls -d "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)
+          echo "Android SDK: $SDK | sdkmanager: $SDKMGR"
+          yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+          "$SDKMGR" --install "ndk;27.0.12077973" "cmake;3.22.1"
+          echo "NDK_HOME=$SDK/ndk/27.0.12077973" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=$SDK/ndk/27.0.12077973" >> "$GITHUB_ENV"
       # 缓存 cargo 编译产物，加速后续 Android 交叉编译
       - uses: swatinem/rust-cache@v2
         with:
