@@ -84,10 +84,26 @@ jobs:
           import re
           p = "src-tauri/gen/android/app/build.gradle.kts"
           s = open(p).read()
-          new_s, n = re.subn(r'(\n\s*release\s*\{)', r'\1\n            signingConfig = signingConfigs["debug"]', s, count=1)
-          assert n == 1, "未找到 release buildType 块"
-          open(p, 'w').write(new_s)
-          print("已为 release 注入 debug 签名（demo 测试用）")
+          # 诊断：打印 buildTypes 段，便于确认模板结构
+          m = re.search(r'buildTypes\s*\{', s)
+          if m:
+              print("=== buildTypes 段 ===")
+              print(s[m.start():m.start()+500])
+          # 宽松匹配 release 块的多种 Kotlin DSL 写法
+          pats = [
+              r'(\n\s*getByName\(\s*"release"\s*\)\s*\{)',
+              r'(\n\s*release\s*\{)',
+              r'(\n\s*"release"\s*\{)',
+              r'(\n\s*named\(\s*"release"\s*\)\s*\{)',
+          ]
+          for pat in pats:
+              new_s, n = re.subn(pat, r'\1\n            signingConfig = signingConfigs["debug"]', s, count=1)
+              if n == 1:
+                  open(p, 'w').write(new_s)
+                  print("已注入 debug 签名，命中:", pat)
+                  break
+          else:
+              raise SystemExit("未找到 release buildType 块（见上方诊断输出）")
           PYEOF
       # 按 matrix.mode 构建 debug 或 release（仅 arm64）
       - name: Build Android APK (${{ matrix.mode }})
