@@ -76,6 +76,19 @@ jobs:
       # CI 内生成 gen/android（不提交仓库）
       - name: Init Android project
         run: pnpm tauri android init
+      # demo：release 复用 debug 签名，使 release APK 可装机测试（正式分发应改用正式 keystore）
+      - name: Use debug signing for release (demo)
+        if: matrix.mode == 'release'
+        run: |
+          python3 << 'PYEOF'
+          import re
+          p = "src-tauri/gen/android/app/build.gradle.kts"
+          s = open(p).read()
+          new_s, n = re.subn(r'(\n\s*release\s*\{)', r'\1\n            signingConfig = signingConfigs["debug"]', s, count=1)
+          assert n == 1, "未找到 release buildType 块"
+          open(p, 'w').write(new_s)
+          print("已为 release 注入 debug 签名（demo 测试用）")
+          PYEOF
       # 按 matrix.mode 构建 debug 或 release（仅 arm64）
       - name: Build Android APK (${{ matrix.mode }})
         run: |
