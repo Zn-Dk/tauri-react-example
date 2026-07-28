@@ -1,6 +1,6 @@
 # GitHub Actions 自动构建 Windows 安装包（Tauri v2）
 
-> 沉淀日期：2026-07-27 ｜ 项目：tauri-react-example ｜ 状态：已验证通过（Windows 物理机安装 + greet 测试 OK）
+> 沉淀日期：2026-07-27 ｜ 适用：Tauri React 模板及其派生项目 ｜ 状态：已验证通过（Windows 物理机安装 + greet 测试 OK）
 
 ## 一、背景与目标
 

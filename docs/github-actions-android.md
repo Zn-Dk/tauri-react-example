@@ -1,6 +1,6 @@
 # GitHub Actions 自动构建 Android APK（Tauri v2）
 
-> 沉淀日期：2026-07-27 ｜ 状态：已验证通过（run success，产出 debug APK 114MB）
+> 沉淀日期：2026-07-27 ｜ 适用：Tauri React 模板及其派生项目 ｜ 状态：已验证通过（debug/release arm64 APK 均可构建）
 > 桌面端方案见同目录 `github-actions-windows.md`
 
 ## 一、背景与架构

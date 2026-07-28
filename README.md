@@ -1,56 +1,74 @@
-# Tauri + React + Vite Example
+# Tauri + React + Vite 模板
 
-一个用 `create-vite` 脚手架并集成 [Tauri v2](https://tauri.app/) 的最小示例项目，演示前端通过 `invoke` 调用 Rust 端命令（Rust ↔ React 桥接）。
+一个可直接复用的 Tauri v2 + React + Vite + TypeScript 模板，包含跨 Windows / Android 的 GitHub Actions 构建链路。
+
+这个仓库的定位是**模板**，不是业务应用：保留最小的 Rust ↔ React `invoke` 示例和 CI/CD 基建，业务项目应通过 GitHub 的 **Use this template** 创建新仓库后独立演进。
 
 ## 技术栈
 
 - **前端**：React 19 + TypeScript + Vite 8
 - **桌面端**：Tauri v2（Rust）
 - **包管理**：pnpm
+- **自动构建**：GitHub Actions（Windows 安装包、Android arm64 debug/release APK）
+
+## 使用模板创建项目
+
+1. 在本仓库 GitHub 页面点击 **Use this template → Create a new repository**。
+2. 在新仓库中按 `docs/template-guide.md` 完成项目改名。
+3. 推送代码后，Windows 和 Android 构建 workflow 会自动运行；纯 Markdown / `docs/` 变更不会触发构建。
+4. 在 Actions run 的 Artifacts 下载对应安装包。
+
+## 新项目必须修改的配置
+
+至少修改以下三项，避免应用身份和产物名称沿用模板：
+
+| 文件 | 配置 | 示例 |
+|---|---|---|
+| `package.json` | `name` | `clip-pilot` |
+| `src-tauri/tauri.conf.json` | `productName` / `identifier` / `app.windows[].title` | `ClipPilot` / `com.example.clip_pilot` |
+| `index.html` | `<title>` | `ClipPilot` |
+
+`identifier` 必须是唯一的反向域名格式，例如 `com.zndk.clip_pilot`；不要使用 `com.tauri.dev`，也不要让多个真实应用共用同一个 identifier。
 
 ## 目录结构
 
 ```
-tauri-react-example/
-├── src/                  # React 前端源码
-│   └── App.tsx           # 调用 greet 命令的示例组件
-├── src-tauri/            # Tauri / Rust 端
-│   ├── src/lib.rs        # greet 命令定义与注册
-│   ├── Cargo.toml        # Rust 依赖
-│   └── tauri.conf.json   # Tauri 配置（窗口、devUrl、frontendDist）
-├── vite.config.ts        # 固定端口 5173 + Tauri 环境变量前缀
-└── package.json
+.
+├── .github/workflows/       # Windows / Android 自动构建
+├── docs/                    # CI/CD 与模板使用说明
+├── src/                     # React 前端
+│   └── App.tsx              # 最小 invoke + debug DEV_MODE 示例
+├── src-tauri/               # Tauri / Rust 端
+│   ├── src/lib.rs           # greet、is_dev_mode 命令
+│   ├── Cargo.toml           # Rust 依赖
+│   └── tauri.conf.json      # 应用身份、窗口和构建配置
+├── package.json
+└── vite.config.ts
 ```
 
-## 环境要求
-
-- Node.js 与 pnpm
-- [Rust](https://www.rust-lang.org/)（rustc / cargo）
-- Tauri 系统依赖（仅桌面构建需要）：
-  - **Debian/Ubuntu**：`libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev`
-  - **Fedora/RHEL 9+**：`webkit2gtk4.1-devel openssl-devel curl wget file libappindicator-gtk3-devel librsvg2-devel libxdo-devel`
-
-> 注意：Tauri v2 需要 `webkit2gtk-4.1` API。**RHEL 8 系（如 TencentOS Server 3.x）仓库仅提供 `webkit2gtk3`（4.0 API），不满足要求**，因此无法在该类系统上编译桌面端。如需运行桌面端，请在 Ubuntu 22.04+ / Fedora 36+ / RHEL 9 等具备 4.1 API 的环境执行。
-
-## 常用脚本
+## 常用命令
 
 ```bash
 pnpm install        # 安装前端依赖
-pnpm dev            # 仅启动前端开发服务器（浏览器预览，invoke 不可用）
-pnpm build          # 构建前端到 dist/
-pnpm tauri dev      # 启动 Tauri 桌面应用（热重载，需系统依赖）
-pnpm tauri build    # 打包可执行文件 / 安装包（需系统依赖）
+pnpm dev            # 浏览器预览 UI
+pnpm build          # 类型检查 + Vite 构建
+pnpm tauri dev      # 启动 Tauri 桌面开发窗口
+pnpm tauri build    # 本机构建桌面安装包
 ```
 
-## 示例说明
+> `invoke` 依赖 Tauri 运行时。普通浏览器执行 `pnpm dev` 时，`greet` 不会真正调用 Rust；这只适合预览 UI。
 
-- Rust 端在 `src-tauri/src/lib.rs` 定义了 `greet` 命令并通过 `invoke_handler` 注册：
-  ```rust
-  #[tauri::command]
-  fn greet(name: &str) -> String {
-      format!("Hello, {}! You've been greeted from Rust!", name)
-  }
-  ```
-- 前端在 `src/App.tsx` 通过 `invoke('greet', { name })` 调用并展示结果。
+## 构建与发布说明
 
-> `invoke` 依赖 Tauri 运行时注入，仅在 `pnpm tauri dev` 启动的桌面窗口中可用；用 `pnpm dev` 在普通浏览器中打开时点击按钮会报错，属正常现象。
+- `push` 到 `main` 自动触发 Windows / Android 构建；连续 push 时 `concurrency` 会取消旧 run，只保留最新 run。
+- `workflow_dispatch` 是备用手动入口；Android 可选择 `all`、`debug` 或 `release`。
+- Android workflow 只构建 arm64，并在 CI 内生成 `gen/android`，不需要提交该目录。
+- 当前 release 是 demo 配置：复用 debug 签名，仅用于实机测试；正式分发前必须改成 GitHub Secrets 管理的正式 keystore。
+- debug 构建会显示底部 `DEV_MODE` 标识，release 构建不会显示。
+
+详细说明：
+
+- `docs/template-guide.md`：创建新项目后的改名清单
+- `docs/github-actions-windows.md`：Windows 构建原理与排错
+- `docs/github-actions-android.md`：Android 构建、体积和签名
+- `docs/ci-cd-strategy.md`：CI 自动构建、CD 人工发布的分离策略

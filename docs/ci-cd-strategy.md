@@ -1,6 +1,6 @@
 # CI/CD 触发策略：构建自动、发布人工
 
-> 沉淀日期：2026-07-27 ｜ 项目：tauri-react-example
+> 沉淀日期：2026-07-27 ｜ 适用：Tauri React 模板及其派生项目
 > 配套：`github-actions-windows.md` / `github-actions-android.md`
 
 ## 一、核心结论
